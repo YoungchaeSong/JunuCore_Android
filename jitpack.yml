@@ -1,7 +1,2 @@
 jdk:
   - openjdk17
-before_install:
-  - export JAVA_HOME=$JAVA_HOME_OPENJDK17 # Or the specific path JitPack unpacks it to
-  - export GRADLE_OPTS="-Dorg.gradle.java.home=$JAVA_HOME_OPENJDK17"
-install:
-  - ./gradlew listDeps -I ../deps.gradle # Your build command
