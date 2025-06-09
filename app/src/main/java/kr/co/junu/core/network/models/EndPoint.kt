@@ -86,6 +86,15 @@ data class EndPoint<T : Any>(
                         val requestBody = v.asRequestBody(mediaType)
                         builder.addFormDataPart(key, v.name, requestBody)
                     }
+                    is List<*> -> {
+                        if (v.isNotEmpty() && v.first() is File) {
+                            v.filterIsInstance<File>().forEach { file ->
+                                val mediaType = file.getMediaType()
+                                val requestBody = file.asRequestBody(mediaType)
+                                builder.addFormDataPart("${key}[]", file.name, requestBody)
+                            }
+                        }
+                    }
                     else -> builder.addFormDataPart(key, v.toString())
                 }
             }
