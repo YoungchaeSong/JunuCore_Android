@@ -16,7 +16,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-object APIClient {
+object ApiClient {
     val gson = Gson()
     val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -53,7 +53,7 @@ object APIClient {
                 throw IOException("Invalid JSON", e)
             }
         } catch (e: Exception) {
-            Log.e("APIClient", "❌ 요청 실패: ${e.localizedMessage}")
+            Log.e("ApiClient", "❌ 요청 실패: ${e.localizedMessage}")
             throw e
         }
     }
@@ -64,7 +64,7 @@ object APIClient {
         return try {
             sendRequest<Req, Any>(endPoint).status == Status.SUCCESS
         } catch (e: Exception) {
-            Log.e("APIClient", "❌ sendWithoutDecoding error: ${e.localizedMessage}")
+            Log.e("ApiClient", "❌ sendWithoutDecoding error: ${e.localizedMessage}")
             false
         }
     }

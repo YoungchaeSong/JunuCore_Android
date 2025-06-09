@@ -9,6 +9,7 @@ import kr.co.junu.core.network.ContentType
 import kr.co.junu.core.network.HttpMethod
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -73,8 +74,6 @@ data class EndPoint<T : Any>(
         if (isGet || body == null) return null
 
         val fields = body.toFieldMap(clazz)
-
-        // ✅ File이 하나라도 있으면 multipart/form-data
         val containsFile = fields.values.any { it is File }
 
         return if (containsFile) {
@@ -83,7 +82,8 @@ data class EndPoint<T : Any>(
                 val key = k.camelToSnakeCase()
                 when (v) {
                     is File -> {
-                        val requestBody = v.asRequestBody("application/octet-stream".toMediaType())
+                        val mediaType = v.getMediaType()
+                        val requestBody = v.asRequestBody(mediaType)
                         builder.addFormDataPart(key, v.name, requestBody)
                     }
                     else -> builder.addFormDataPart(key, v.toString())
@@ -92,6 +92,15 @@ data class EndPoint<T : Any>(
             builder.build()
         } else {
             getJsonBody().toRequestBody("application/json".toMediaType())
+        }
+    }
+
+    private fun File.getMediaType(): MediaType {
+        return when (extension.lowercase()) {
+            "jpg", "jpeg" -> "image/jpeg".toMediaType()
+            "png" -> "image/png".toMediaType()
+            "gif" -> "image/gif".toMediaType()
+            else -> "application/octet-stream".toMediaType()
         }
     }
 
