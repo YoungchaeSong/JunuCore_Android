@@ -37,6 +37,7 @@ data class EndPoint<T : Any>(
     val clazz: Class<T>,
     val useHttps: Boolean = true,
     val useJson: Boolean = true,
+    val contentType: ContentType = ContentType.JSON,  // ✅ 추가
     var headers: MutableMap<String, String> = mutableMapOf()
 ) {
     companion object {
@@ -71,37 +72,53 @@ data class EndPoint<T : Any>(
     }
 
     fun getRequestBody(): RequestBody? {
+
         if (isGet || body == null) return null
 
         val fields = body.toFieldMap(clazz)
-        val containsFile = fields.values.any { it is File }
 
-        return if (containsFile) {
-            val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
-            fields.forEach { (k, v) ->
-                val key = k.camelToSnakeCase()
-                when (v) {
-                    is File -> {
-                        val mediaType = v.getMediaType()
-                        val requestBody = v.asRequestBody(mediaType)
-                        builder.addFormDataPart(key, v.name, requestBody)
-                    }
-                    is List<*> -> {
-                        if (v.isNotEmpty() && v.first() is File) {
+        return when (contentType) {
+            ContentType.MULTIPART -> buildMultipartBody(fields)
+            ContentType.JSON -> getJsonBody().toRequestBody(ContentType.JSON.value.toMediaType())
+            else -> {
+                return null
+            }
+        }
+    }
+
+    fun buildMultipartBody(fields: Map<String, Any?>): RequestBody {
+        val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
+
+        fields.forEach { (k, v) ->
+            val key = k.camelToSnakeCase()
+            when (v) {
+                is File -> {
+                    val mediaType = v.getMediaType()
+                    val requestBody = v.asRequestBody(mediaType)
+                    builder.addFormDataPart(key, v.name, requestBody)
+                }
+                is List<*> -> {
+                    when {
+                        v.isNotEmpty() && v.first() is File -> {
                             v.filterIsInstance<File>().forEach { file ->
                                 val mediaType = file.getMediaType()
                                 val requestBody = file.asRequestBody(mediaType)
-                                builder.addFormDataPart("${key}[]", file.name, requestBody)
+                                builder.addFormDataPart(key, file.name, requestBody)
                             }
                         }
+                        else -> {
+                            val json = Gson().toJson(v)
+                            builder.addFormDataPart(key, json)
+                        }
                     }
-                    else -> builder.addFormDataPart(key, v.toString())
+                }
+                else -> {
+                    builder.addFormDataPart(key, v?.toString() ?: "")
                 }
             }
-            builder.build()
-        } else {
-            getJsonBody().toRequestBody("application/json".toMediaType())
         }
+
+        return builder.build()
     }
 
     private fun File.getMediaType(): MediaType {
